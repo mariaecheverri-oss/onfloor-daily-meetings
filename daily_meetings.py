@@ -257,7 +257,7 @@ def trigger():
                 f"*Lead Score: {grading}*"
             )
 
-        slack_text = header + "\n\n" + "\n\n\n".join(blocks)
+        slack_text = header + "\n\n" + "\n\n\n".join(blocks) + "\n"
 
         if messages_sent > 0:
             time_module.sleep(2)
