@@ -248,15 +248,16 @@ def trigger():
                 email = "N/A"
                 grading = "N/A"
 
+            clean_title = title.strip("*")
             blocks.append(
-                f"*{time_label} — {title}*\n"
+                f"*{time_label} — {clean_title}*\n"
                 f"Contact: {contact_name}\n"
                 f"Phone: {phone}\n"
                 f"Email: {email}\n"
                 f"*Lead Score: {grading}*"
             )
 
-        slack_text = header + "\n\n" + "\n\n".join(blocks)
+        slack_text = header + "\n\n" + "\n\n\n".join(blocks)
 
         if messages_sent > 0:
             time_module.sleep(2)
