@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: onfloor-daily-meetings
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn daily_meetings:app
+    envVars:
+      - key: HUBSPOT_TOKEN
+        sync: false
+      - key: SLACK_WEBHOOK_URL
+        sync: false
+      - key: TRIGGER_SECRET
+        sync: false
