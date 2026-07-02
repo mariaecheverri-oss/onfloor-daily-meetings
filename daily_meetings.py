@@ -1,4 +1,5 @@
 import os
+import time as time_module
 from datetime import datetime, time
 
 import pytz
@@ -9,7 +10,12 @@ app = Flask(__name__)
 
 CST = pytz.timezone("America/Chicago")
 
-OWNER_NAMES = ["travis mccutchen", "agustin garcia", "maxwell goldberg"]
+REPS = [
+    {"name": "Agustin Garcia",    "first": "Agustin", "slack_id": "U0B8FRWNACR"},
+    {"name": "Travis McCutchen",  "first": "Travis",  "slack_id": "U4A99SRSB"},
+    {"name": "Maxwell Goldberg",  "first": "Maxwell", "slack_id": "U014LQEPVGE"},
+]
+OWNER_NAMES = [r["name"].lower() for r in REPS]
 
 
 def get_env(key):
@@ -176,16 +182,9 @@ def trigger():
         if "equipment consultation" in title.lower() and owner_id in owner_id_map:
             matching.append(m)
 
-    date_label = now_cst.strftime("%-m/%-d/%Y").replace(
-        now_cst.strftime("%-m/%-d/%Y"),
-        now_cst.strftime("%B %-d, %Y"),
-    )
+    date_label = now_cst.strftime("%B %-d, %Y")
 
-    header = f"\U0001f4c5 *Equipment Consultations — {date_label}*"
-
-    if not matching:
-        slack_text = f"{header}\n\nNo consultations scheduled for today."
-    else:
+    if matching:
         meeting_ids = [str(m["id"]) for m in matching]
         meeting_to_contacts = fetch_contacts_for_meetings(meeting_ids)
 
@@ -204,12 +203,27 @@ def trigger():
 
         matching.sort(key=_parse_start)
 
+    webhook_url = get_env("SLACK_WEBHOOK_URL")
+    messages_sent = 0
+
+    for rep in REPS:
+        rep_meetings = [
+            m for m in matching
+            if owner_id_map.get(str(m["properties"].get("hubspot_owner_id") or ""), "").lower()
+            == rep["name"].lower()
+        ]
+        if not rep_meetings:
+            continue
+
+        header = (
+            f"\U0001f4c5 *{rep['first']}'s Equipment Consultations — {date_label}*"
+            f" <@{rep['slack_id']}>"
+        )
+
         blocks = []
-        for m in matching:
+        for m in rep_meetings:
             props = m.get("properties", {})
             title = props.get("hs_meeting_title") or "Equipment Consultation"
-            owner_id = str(props.get("hubspot_owner_id") or "")
-            owner_name = owner_id_map.get(owner_id, "Unknown")
 
             start_iso = props.get("hs_meeting_start_time")
             if start_iso:
@@ -236,22 +250,22 @@ def trigger():
 
             blocks.append(
                 f"*{time_label} — {title}*\n"
-                f"Owner: {owner_name}\n"
                 f"Contact: {contact_name}\n"
                 f"Phone: {phone}\n"
                 f"Email: {email}\n"
-                f"Application Grading: {grading}"
+                f"*Lead Score: {grading}*"
             )
 
         slack_text = header + "\n\n" + "\n\n".join(blocks)
 
-    slack_resp = requests.post(
-        get_env("SLACK_WEBHOOK_URL"),
-        json={"text": slack_text},
-    )
-    slack_resp.raise_for_status()
+        if messages_sent > 0:
+            time_module.sleep(2)
 
-    return jsonify({"message": "Sent"}), 200
+        resp = requests.post(webhook_url, json={"text": slack_text})
+        resp.raise_for_status()
+        messages_sent += 1
+
+    return jsonify({"message": f"Sent {messages_sent} message(s)"}), 200
 
 
 if __name__ == "__main__":
