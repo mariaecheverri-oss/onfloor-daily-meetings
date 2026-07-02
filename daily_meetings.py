@@ -196,9 +196,13 @@ def trigger():
         })
         contact_details = fetch_contact_details(all_contact_ids)
 
-        matching.sort(
-            key=lambda m: int(m["properties"].get("hs_meeting_start_time") or 0)
-        )
+        def _parse_start(m):
+            val = m["properties"].get("hs_meeting_start_time")
+            if not val:
+                return datetime.min.replace(tzinfo=pytz.utc)
+            return datetime.fromisoformat(val.replace("Z", "+00:00"))
+
+        matching.sort(key=_parse_start)
 
         blocks = []
         for m in matching:
@@ -207,10 +211,11 @@ def trigger():
             owner_id = str(props.get("hubspot_owner_id") or "")
             owner_name = owner_id_map.get(owner_id, "Unknown")
 
-            start_ms_val = props.get("hs_meeting_start_time")
-            if start_ms_val:
-                start_dt = datetime.fromtimestamp(int(start_ms_val) / 1000, tz=CST)
-                time_label = start_dt.strftime("%-I:%M %p")
+            start_iso = props.get("hs_meeting_start_time")
+            if start_iso:
+                start_utc = datetime.fromisoformat(start_iso.replace("Z", "+00:00"))
+                start_cst = start_utc.astimezone(CST)
+                time_label = start_cst.strftime("%-I:%M %p")
             else:
                 time_label = "Unknown time"
 
