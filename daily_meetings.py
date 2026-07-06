@@ -257,12 +257,20 @@ def trigger():
                 f"*Lead Score: {grading}*"
             )
 
-        slack_text = header + "\n\n" + "\n\n\n".join(blocks) + "\n"
+        kit_blocks = [
+            {"type": "section", "text": {"type": "mrkdwn", "text": header}},
+        ]
+        for i, block_text in enumerate(blocks):
+            if i > 0:
+                kit_blocks.append({"type": "divider"})
+            kit_blocks.append(
+                {"type": "section", "text": {"type": "mrkdwn", "text": block_text}}
+            )
 
         if messages_sent > 0:
             time_module.sleep(2)
 
-        resp = requests.post(webhook_url, json={"text": slack_text})
+        resp = requests.post(webhook_url, json={"blocks": kit_blocks})
         resp.raise_for_status()
         messages_sent += 1
 
