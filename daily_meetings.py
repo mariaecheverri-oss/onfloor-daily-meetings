@@ -216,7 +216,7 @@ def trigger():
             continue
 
         header = (
-            f"\U0001f4c5 *{rep['first']}'s Equipment Consultations — {date_label}*"
+            f"*{rep['first']}'s Equipment Consultations — {date_label}*"
             f" <@{rep['slack_id']}>"
         )
 
